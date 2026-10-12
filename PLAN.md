@@ -1,116 +1,241 @@
-# 99ENTERTAINMENT — Website Plan
+# 99ENT: Website Plan
 
-The production arm of 99: music production, video editing, direction, post.
-Reference: [donprod.uk](https://donprod.uk/) (DON PROD / "Double or Nothing Productions", built by @danny.lines).
+99ENT (99entertainment) is the production arm of 99. It does music videos, promo videos, music production, and mixing and mastering. It sits alongside 99MGMT, 99MS, 99RIM and 99WRLDWIDE.
 
-> **Inspired by, not copied.** We take the *system* (a dark, cinematic, monospace HUD around
-> full-bleed work) and build our own identity on top of it: our own logo, type pairing,
-> wordmark pattern, copy and motion details. No DON PROD assets, copy or code.
+- **Design reference:** [donprod.uk](https://donprod.uk/) (DON PROD). We use it for structure and motion only.
+- **Family reference:** the `99management`, `99ms` and `99rim` repos. We use them for look, stack and deploy flow.
 
----
+> **Inspired by, not copied.** We take DON PROD's *system*: a cinematic monospace HUD around full-bleed video. We dress it in 99's own identity. No DON PROD assets, copy or code.
 
-## 1. What makes the reference work (teardown from screenshots)
-
-| View | What it does | Steal the idea | Make it ours |
-|---|---|---|---|
-| **Home** (shot 1) | Black page, a large logo, then a **vertical reel of video thumbnails**. The focused clip sits in **corner-bracket "viewfinder" frame marks**; clips above/below get **smaller and dimmer**. The cursor is a crosshair. A **tick-mark scroll gauge** sits on the left edge. The bottom bar shows `CATEGORY · TITLE · ARTIST · 01`. | Scroll-snapped reel with a focus state, viewfinder brackets, HUD footer that updates on focus | "99" counter motif: the index is shown as `01 / 99`-style frame numbers, and the HUD reads like a camera/DAW readout |
-| **Project player** (shot 2) | A full-bleed video inside the same brackets. Rotated side labels read `FULLSCREEN` / `SOUND` / `PLAY`. Below it is a **tick-mark scrubber** and a **huge condensed title** with the artist on the right. | Tick scrubber, vertical side controls, giant condensed type | For music projects, the scrubber becomes a **real audio waveform**, and the player handles audio-only work (beats, mixes) as well as video |
-| **Contact** (shot 3) | Flips to **light mode**. It's a **hairline grid** with a showreel thumbnail, location and coordinates, a BTS photo carousel (`002 / 013`), the giant line `READY WHEN YOU ARE.`, social links, a **rotated repeating wordmark pattern**, `MODE: COLOUR`, a spaced-out wordmark, and emoji reactions (🔥 👎) with ©. | Light/dark inversion on contact, hairline grid, wordmark wallpaper | Our own line (e.g. `NINETY-NINE TIMES OUT OF A HUNDRED.` / `PRESS RECORD.`) and a "99 ENTERTAINMENT" wordmark wallpaper in our display face |
-| **Archive** (shot 4) | A full **tracklist table**: `[01] TITLE · ARTIST · 03:06`. The hovered row gets inverted boxes on the index and the duration. A **hover preview video with a CRT/warp distortion** floats centre-screen in brackets. Filters at the bottom: `All [29] Music [27] Commercial [2]`. There's an RGB "colour mode" dot. | Tracklist archive, WebGL hover preview, filter counts | Filters match our services: `All · Music Video · Production · Edit · Commercial`. Rows can be **audio** (beat/mix) with a waveform preview instead of video |
-
-**Global system:** a `DN-PRD`-style code mark top-left, `CONTACT` / `ARCHIVE` top-right, monospace caps everywhere, near-black background, 1px hairlines, a custom cursor, and a colour/mono mode toggle (videos go greyscale in mono).
+**Scope for v1: videos only.** Music and audio work can come later; see §9.
 
 ---
 
-## 2. Sitemap
+## 1. Domains and the publish flow
+
+| Address | What it is | Who sees it |
+|---|---|---|
+| **99entertainment.dk** | Live site | Everyone. It only changes when someone presses **Push live** |
+| **prod.99entertainment.dk** | Prod (review) site. All code changes and newly posted videos land here first | Public URL, but `noindex`, a yellow **PROD** badge, and drafts are visible only when logged in |
+| **admin.99entertainment.dk** | Admin panel. Post, edit, reorder and hide videos | Logged-in 99 admins only |
 
 ```
-/                 Home: vertical reel (featured work)
-/work/[slug]      Project player (video or audio)
-/archive          Full tracklist with filters + hover preview
-/contact          Light-mode contact page, showreel, BTS carousel
-/services (opt.)  Music production · Video editing · Direction · Mix/Master
+ admin.99entertainment.dk           prod.99entertainment.dk                99entertainment.dk
+ ┌──────────────────────┐  draft   ┌──────────────────────────┐  Push live  ┌──────────────────┐
+ │ upload video, title, │ ───────▶ │ shows live + DRAFT items │ ──────────▶ │ shows live items │
+ │ artist, category …   │          │ runs newest code         │   button    │ runs pushed code │
+ └──────────────────────┘          └──────────────────────────┘             └──────────────────┘
+      code changes (me / Claude) ─────────▲
 ```
 
-Navigation is persistent. Page changes use **transitions** (bracket frame expands from the reel item into the player), not hard reloads.
+**One button pushes both content and code.**
+
+- **Content:** every video marked *ready* goes from `draft` to `live`.
+- **Code:** the live site is updated to the exact commit you just reviewed on prod.
+
+**What the Push live button does** (shown on prod only, and only when logged in as an admin):
+
+1. It opens a summary of what will change: "3 new videos, 1 edited, 4 code changes since last push (list)".
+2. On confirm, a server function checks that you are an admin. Then it:
+   - publishes the ready videos, and
+   - moves the live site to prod's current commit.
+3. Live updates in ~30–60s. Each push is logged with who, when, which commit and which videos, so **Undo last push** can roll back to the previous one.
+
+**Hiding a video is instant.** If something has to come down (legal, the artist asks), "Hide" in admin removes it from live immediately. It doesn't wait for a push.
+
+**Unreleased videos stay private.** Drafts are never in the public data. Prod fetches them only with an admin login, and the video files use signed URLs. That way a music video can't leak before its release date.
 
 ---
 
-## 3. Brand system for 99ENTERTAINMENT
+## 2. Hosting: recommendation
 
-- **Code mark (top-left):** `99-ENT` (our equivalent of `DN-PRD`).
-- **Logo:** a custom "99" mark in a heavy, slanted, rounded display style, used big on Home and small in the loader. *Needs the client's logo or a commission.*
-- **Type**
-  - UI / HUD: monospace, caps, ~12–13px, letter-spaced. Candidates: *JetBrains Mono*, *IBM Plex Mono*, *Geist Mono* (all free).
-  - Display: ultra-condensed grotesk for titles. Candidates: *Anton* or *Bebas Neue* (free), *Druk Condensed* or *Monument Grotesk Compressed* (paid).
-  - Wallpaper pattern: the logo face, or a blocky rounded display face.
-- **Colour:** `#000` / `#F4F4F4` plus one **accent** for 99 (TBD, e.g. signal red or tape-orange), used only for the playhead, the active index and the REC dot.
-- **Motifs:** viewfinder corner brackets, tick-mark gauges, frame counters, a REC dot, waveform lines, `[01]` bracket indices, and timecode `00:03:06:12`.
+The family sites use GitHub Pages: no build step, and a separate prod repo for 99RIM. GitHub Pages allows **one domain per repo**. So three subdomains plus a server-side push button would mean three repos.
 
----
+**Recommended: Cloudflare Pages, one repo (this one).**
 
-## 4. Key interactions (build list)
+| Branch / folder | Domain |
+|---|---|
+| `main` branch | prod.99entertainment.dk (everything lands here first) |
+| `live` branch | 99entertainment.dk |
+| `admin/` folder (second Pages project, same repo) | admin.99entertainment.dk |
 
-1. **Loader:** a counter from `00` to `99`, then the logo, then the reel fades in.
-2. **Vertical reel (Home):** smooth scroll (Lenis) plus snap. The focused item scales to 100% with brackets, and neighbours shrink to ~85% at 30% opacity. Muted autoplay applies only to the focused clip. The HUD footer text "scrambles" to the new title/artist/index.
-3. **Left tick gauge:** shows scroll progress through the reel. It's clickable and draggable.
-4. **Custom cursor:** a crosshair over media, a dot elsewhere, and `PLAY` / `VIEW` labels on hover.
-5. **Reel → Player transition:** a FLIP of the focused thumbnail to full-bleed, brackets animate to the viewport corners, and the title slides up in the display face.
-6. **Player:** a tick or waveform scrubber, `SOUND` / `FULLSCREEN` / `PLAY` side controls, keyboard controls (space, ←/→, M, F), and next/prev project.
-7. **Archive hover preview:** a WebGL plane with a CRT shader (barrel warp, scanlines, RGB split, horizontal smear on movement). It follows the hovered row. Row index and duration invert.
-8. **Archive filters:** live counts, and rows animate out and in.
-9. **Contact:** dark→light inversion on enter, a rotated, endlessly scrolling wordmark pattern, a BTS carousel `001 / 0NN`, local time and coordinates, and a 🔥 / 👎 reaction counter (stored server-side as a fun stat).
-10. **Colour / mono toggle:** a CSS filter on all media, persisted in localStorage.
-11. **Audio support (our addition):** beats and mixes play through the same player with a waveform (precomputed peaks JSON), plus a mini "now playing" HUD that persists across pages.
+- **Push live** is a small Cloudflare Pages Function. It holds a GitHub token and fast-forwards `live` to `main`. Live is then *byte-for-byte* what you reviewed.
+- Rollback means moving `live` back one commit.
+- It's free, needs no build step (same plain HTML/CSS/JS as the family), and Cloudflare sets up SSL for the subdomains automatically.
+- **It needs the domain's nameservers on Cloudflare.** If you set them somewhere else, either move them (free) or use the fallback.
 
-Accessibility: honour `prefers-reduced-motion` (no smooth scroll, shader, or scramble), add real `<button>`s and focus states, add captions where possible, keep keyboard nav through the reel, and never autoplay sound.
+**Fallback: GitHub Pages, like 99RIM.**
 
-Mobile: a single-column reel with tap-to-play, archive rows without the hover preview (tap opens the project), and a simplified player (the Awwwards entries show DON PROD has dedicated mobile player and project layouts, so this needs real design time, not just an afterthought).
+| Repo | Domain |
+|---|---|
+| `99entertainment` | live |
+| `99entertainment-prod` | prod |
+| `99entertainment-admin` | admin |
+
+- The push button calls a Supabase Edge Function. That function triggers a GitHub Action that copies prod into live. Like 99RIM, it never copies `CNAME` between repos.
+- It works, but it means three repos and a slower push of about 1–2 minutes.
 
 ---
 
-## 5. Tech stack (recommended)
+## 3. Backend: Supabase + video hosting
 
-| Concern | Choice | Why |
+- **Supabase** (the same account as 99MS/99RIM is fine, as a new project or a new schema).
+  - **Auth:** email-link login, the same as 99MS. An `admins` table holds the allowed emails.
+  - **Database:** the `videos` table and the `pushes` log.
+  - **Row-level security:** anyone can read `status = 'live'`, and only admins can read or write anything else.
+- **Video hosting: Bunny Stream** (EU-based, very cheap, built for this).
+  - Upload straight from the admin page with resumable uploads, so big files survive a bad connection.
+  - It automatically creates adaptive streaming (HLS), a poster frame, and an animated preview for hover thumbnails.
+  - Drafts use token-signed URLs.
+  - **Alternative:** Cloudflare Stream (pairs nicely if we go Cloudflare). We don't use YouTube/Vimeo embeds, because their players and branding break the custom player design.
+
+**Video record.** Each video stores:
+
+| Field | Notes |
+|---|---|
+| `title` | |
+| `artist` | |
+| `category` | music video / promo / commercial / showreel |
+| `year` | |
+| `release_at` | Optional. A video can go live automatically at release time |
+| `duration` | |
+| `bunny_video_id` | |
+| `poster` | |
+| `preview` | |
+| `credits` | List of role + name: Director, DOP, Edit, Colour… |
+| `featured` | Shown on the Home reel |
+| `order` | |
+| `status` | `draft` → `ready` → `live`, or `hidden` |
+
+---
+
+## 4. Look and feel: 99 family × DON PROD structure
+
+From the 99 repos:
+
+- **Colours:** white on black or dark grey.
+
+  | Token | Value | Use |
+  |---|---|---|
+  | `--bg` | `#000` | Video pages (black makes footage pop) |
+  | `--panel` | `#1f2124` | Dark grey for contact, admin and panels (same as 99MS/99RIM) |
+  | `--fg` | `#f4f5f6` | Text |
+  | `--dim` | `#8a8f96` | Secondary text |
+  | `--faint` | `#3a3d42` | Hairlines |
+
+  The yellow `#e8c36a` is used only for the PROD badge, as on 99RIM. There's no other accent: the footage brings the colour.
+- **Type:**
+  - HUD and UI: **Share Tech Mono**, the same mono as 99MS/99RIM. It fits DON PROD's monospace HUD perfectly.
+  - Labels: IBM Plex Sans.
+  - Big titles: an ultra-condensed display face such as Anton, picked to sit next to the logo.
+- **Logo:** the "99" numerals, saved as `assets/logo-white.svg` (main) and `assets/logo-black.svg`.
+- **Name in the HUD:** `99ENT` (as on 99MGMT and @the99ent). It sits top-left where DON PROD has `DN-PRD`.
+- **Language:** EN/DA switch with a flag, like 99MGMT.
+- **Family link:** small footer links to 99MGMT, 99MS, 99RIM and 99WRLDWIDE.
+
+The DON PROD structure we adopt:
+
+- **Viewfinder corner brackets** around the focused video
+- **Tick-mark gauges and scrubber**
+- `[01]` indices and timecode
+- **Ultra-condensed titles** with the artist name opposite
+- A tracklist-style **archive** with a distorted hover preview
+
+---
+
+## 5. Pages
+
+```
+99entertainment.dk/
+  /                Home: 99 logo, then a vertical video reel
+  /work/<slug>     Video player page
+  /archive         Every video as a list, with filters
+  /contact         Contact, showreel, BTS photos, socials
+
+admin.99entertainment.dk/
+  /                List of videos (drag to reorder, status chips, Hide)
+  /new, /<id>      Upload and edit form with live preview of the reel card
+  /pushes          Push history and Undo
+```
+
+### Home
+- 99 logo large, then a vertical reel. The focused video plays muted inside the brackets, and the ones around it shrink and fade.
+- Left edge: a tick gauge showing where you are in the reel.
+- Bottom HUD: `CATEGORY · TITLE · ARTIST · 01`. The text "scrambles" when the focus changes.
+
+### Player
+- Full-bleed video in brackets.
+- Side controls: `FULLSCREEN`, `SOUND`, `PLAY`.
+- A tick-mark scrubber, a huge condensed title, and the artist on the right.
+- Credits list, then next/prev.
+- Keyboard: space, ←/→, M, F.
+
+### Archive
+- Rows as `[01] TITLE · ARTIST · CATEGORY · 03:06`.
+- The hovered row's index and duration invert.
+- A floating preview has a CRT-style warp (WebGL). It falls back to a plain preview on phones and with reduced motion.
+- Filters: `All [n] · Music video [n] · Promo [n] · Commercial [n]`.
+
+### Contact
+- Panel grey instead of black.
+- Showreel tile, a big line (e.g. **"PRESS RECORD."**, to be decided), and Copenhagen/your city with coordinates and local time.
+- BTS carousel `001 / 0NN`, a rotated scrolling "99 ENTERTAINMENT" wordmark wall, and links: Instagram @the99ent, TikTok, YouTube, email.
+
+### Global
+- Custom crosshair cursor, a loader that counts `00 → 99`, and smooth page transitions (the reel card expands into the player).
+- Colour/mono toggle.
+- Respects reduced motion. Mobile gets its own layouts, not a squeezed desktop.
+
+---
+
+## 6. Tech (no build step, like the family)
+
+- **Code:** plain HTML, CSS and JS, with libraries from a CDN:
+  - GSAP for motion
+  - Lenis for smooth scroll
+  - hls.js for streaming
+  - OGL for the CRT shader
+  - supabase-js
+- **Repo layout:**
+
+  ```
+  index.html  work.html  archive.html  contact.html
+  styles.css  js/  assets/
+  admin/      (index.html, admin.css, admin.js)
+  functions/  (push-live, sign-upload — server side)
+  ```
+
+- **Cache-busting:** `?v=<commit>` on deploy, like 99MGMT.
+
+---
+
+## 7. Build order
+
+| # | Step | You can see |
 |---|---|---|
-| Framework | **Next.js (App Router) + TypeScript** | Routing, persistent layout (player/HUD survive navigation), image/SEO, easy Vercel deploy |
-| Styling | **Tailwind CSS** + CSS variables for theme/mode | Fast HUD layouts; light/dark/mono via vars |
-| Motion | **GSAP** (+ Flip, SplitText/ScrambleText) + **Lenis** | Industry standard for this style of site |
-| WebGL | **OGL** (lightweight) or three.js | CRT hover shader, optional reel distortion |
-| Video hosting | **Mux** (or Cloudflare Stream) | HLS adaptive streaming, auto thumbnails/preview clips, analytics. Don't self-host big MP4s |
-| Audio | Mux audio or R2/S3 + **wavesurfer.js** / precomputed peaks | Waveform scrubber |
-| CMS | **Sanity** | Projects editable without code: title, artist, category, duration, credits, video, BTS images |
-| Hosting | **Vercel** | Previews per branch |
-| Forms | Resend (email) or a simple mailto at first | Contact / booking |
-
-Content model (`project`): `title, slug, artist, category[music-video|production|edit|commercial|other], year, duration, mediaType[video|audio], muxPlaybackId | audioFile, peaks, previewClip, poster, credits[{role,name}], featured(bool), order`.
+| 1 | Hosting + DNS: the three subdomains serving a placeholder, the PROD badge, `noindex` on prod | All three URLs work |
+| 2 | Public site layout with dummy videos: Home reel, Player, Archive, Contact | Click through on prod |
+| 3 | Supabase + admin login + video table; site reads from the database | Post a test entry in admin and see it as DRAFT on prod |
+| 4 | Bunny Stream upload in admin, plus HLS playback, posters and previews | Upload a real video |
+| 5 | **Push live** button, push log, Undo, instant Hide | Push and see it on 99entertainment.dk |
+| 6 | Motion: loader, scramble HUD, transitions, cursor, CRT preview | The "DON PROD feel" |
+| 7 | Polish: mobile, EN/DA, accessibility, speed, social preview images | Launch |
 
 ---
 
-## 6. Phases
+## 8. Needed from you
 
-| # | Phase | Output |
-|---|---|---|
-| 0 | **Inputs** | Logo, accent colour, project list (title/artist/category/duration), video and audio files, BTS photos, socials, email, location |
-| 1 | **Design** | Figma frames for Home, Player, Archive, Contact (desktop and mobile), plus motion notes |
-| 2 | **Scaffold** | Next.js, Tailwind, fonts, global HUD layout, routes with placeholder data |
-| 3 | **Core pages** | Static versions of the reel, player, archive and contact with real layout |
-| 4 | **Motion** | Lenis, reel focus logic, cursor, scramble text, loader, page transitions |
-| 5 | **Media** | Mux integration, player, waveform/audio, CRT preview shader |
-| 6 | **CMS** | Sanity schemas and studio, wired into the pages |
-| 7 | **Polish** | Mobile, reduced-motion, a11y, performance (lazy video, poster frames, LCP), SEO/OG images |
-| 8 | **Launch** | Domain, analytics, handover doc on adding new projects |
-
-Suggested first build milestone: **phases 2–3 with dummy data** so the layout can be seen and clicked before the media pipeline exists.
+1. **Where do the nameservers point?** Cloudflare, or your registrar (e.g. Simply, One.com, Punktum)? This decides between the Cloudflare plan and the GitHub Pages fallback.
+2. **Admin emails** that may log in and push.
+3. **Videos to start with:** the files (or links), plus title, artist, category, year and credits.
+4. **Contact details:** email, socials, city.
+5. **Supabase:** reuse the 99MS project, or a new one?
+6. **Bunny Stream account** (I'll write the setup steps), or Cloudflare Stream if we go Cloudflare.
 
 ---
 
-## 7. Open questions for 99
+## 9. Later
 
-1. Do we have a 99 / 99ENTERTAINMENT **logo** and an **accent colour**, or do we design them?
-2. How much **work** is ready: how many videos and tracks, and do we have the source files?
-3. Is **audio work** (beats/mixes for artists) shown publicly, or is it video only like DON PROD?
-4. Do we want a **services / booking** page, or keep it portfolio-only with contact?
-5. **Domain** (e.g. 99ent.co.uk / 99entertainment.com)?
-6. Are there **other 99 arms** (label, clothing, etc.) we should link to from the nav?
-7. Is a CMS needed (will non-devs add projects), or is a JSON file in the repo enough for v1?
+- Music production work: audio player with a waveform, and an "Audio" filter in the archive.
+- Booking form, and service pages for the four 99ENT services.
+- View counts per video in admin.

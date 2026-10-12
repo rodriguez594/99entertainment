@@ -47,35 +47,43 @@
 
 ---
 
-## 2. Hosting: recommendation
+## 2. Hosting: Cloudflare Pages (decided)
 
-The family sites use GitHub Pages: no build step, and a separate prod repo for 99RIM. GitHub Pages allows **one domain per repo**. So three subdomains plus a server-side push button would mean three repos.
+**Only 99entertainment.dk moves to Cloudflare.** 99MGMT, 99MS, 99RIM and 99WRLDWIDE stay on GitHub Pages, unchanged. Each domain has its own nameservers, so nothing about the other sites moves.
 
-**Recommended: Cloudflare Pages, one repo (this one).**
+Everything runs from one repo (this one):
 
-| Branch / folder | Domain |
-|---|---|
-| `main` branch | prod.99entertainment.dk (everything lands here first) |
-| `live` branch | 99entertainment.dk |
-| `admin/` folder (second Pages project, same repo) | admin.99entertainment.dk |
+| Cloudflare Pages project | Git branch / folder | Domain |
+|---|---|---|
+| `99ent` (production) | `live` branch | 99entertainment.dk (+ `www` redirect) |
+| `99ent` (branch alias) | `main` branch | prod.99entertainment.dk (everything lands here first) |
+| `99ent-admin` | `main` branch, `admin/` folder | admin.99entertainment.dk |
 
-- **Push live** is a small Cloudflare Pages Function. It holds a GitHub token and fast-forwards `live` to `main`. Live is then *byte-for-byte* what you reviewed.
-- Rollback means moving `live` back one commit.
-- It's free, needs no build step (same plain HTML/CSS/JS as the family), and Cloudflare sets up SSL for the subdomains automatically.
-- **It needs the domain's nameservers on Cloudflare.** If you set them somewhere else, either move them (free) or use the fallback.
+- **Push live** is a small Cloudflare Pages Function. It holds a GitHub token and fast-forwards `live` to `main`. Live is then *byte-for-byte* what you reviewed on prod.
+- **Undo** moves `live` back to the previous pushed commit.
+- **Admin** always runs the newest code from `main`, because it's an internal tool. Only the public site goes through the prod → live review.
+- It's free and needs no build step: the same plain HTML/CSS/JS as the family. SSL for all subdomains is automatic.
 
-**Fallback: GitHub Pages, like 99RIM.**
+### Setup steps (you, once)
 
-| Repo | Domain |
-|---|---|
-| `99entertainment` | live |
-| `99entertainment-prod` | prod |
-| `99entertainment-admin` | admin |
-
-- The push button calls a Supabase Edge Function. That function triggers a GitHub Action that copies prod into live. Like 99RIM, it never copies `CNAME` between repos.
-- It works, but it means three repos and a slower push of about 1–2 minutes.
-
----
+1. **Cloudflare account** (free) → **Add a domain** → `99entertainment.dk` → Free plan.
+2. Cloudflare shows two nameservers (e.g. `xxx.ns.cloudflare.com`).
+   - If 99entertainment.dk already uses those, skip this step.
+   - Otherwise, set them at the registrar for the domain. For .dk domains that's often Punktum dk's self-service or your registrar's panel.
+   - Wait until Cloudflare says the domain is **Active**. That can take minutes or up to 24h.
+3. **Workers & Pages → Create → Pages → Connect to Git** → `rodriguez594/99entertainment`.
+   - Project name: `99ent`
+   - Production branch: `live`
+   - Build command: *(none)*
+   - Output directory: `/`
+4. In project `99ent` → **Custom domains**, add `99entertainment.dk` and `www.99entertainment.dk`.
+5. In **DNS**, add a `CNAME` record: `prod` → `main.99ent.pages.dev` (proxied).
+6. Create a second Pages project from the same repo:
+   - Name: `99ent-admin`
+   - Production branch: `main`
+   - Root directory: `admin`
+   - Custom domain: `admin.99entertainment.dk`
+7. I'll create the `live` branch and the Push live function. The function's secrets (GitHub token, Supabase keys) go in **Settings → Variables and Secrets**; I'll list exactly which.
 
 ## 3. Backend: Supabase + video hosting
 
@@ -87,7 +95,7 @@ The family sites use GitHub Pages: no build step, and a separate prod repo for 9
   - Upload straight from the admin page with resumable uploads, so big files survive a bad connection.
   - It automatically creates adaptive streaming (HLS), a poster frame, and an animated preview for hover thumbnails.
   - Drafts use token-signed URLs.
-  - **Alternative:** Cloudflare Stream (pairs nicely if we go Cloudflare). We don't use YouTube/Vimeo embeds, because their players and branding break the custom player design.
+  - **Alternative:** Cloudflare Stream (pairs nicely with Cloudflare Pages). We don't use YouTube/Vimeo embeds, because their players and branding break the custom player design.
 
 **Video record.** Each video stores:
 
@@ -213,7 +221,7 @@ admin.99entertainment.dk/
 
 | # | Step | You can see |
 |---|---|---|
-| 1 | Hosting + DNS: the three subdomains serving a placeholder, the PROD badge, `noindex` on prod | All three URLs work |
+| 1 | Cloudflare setup (§2) + `live` branch: the three subdomains serving a placeholder, the PROD badge, `noindex` on prod | All three URLs work |
 | 2 | Public site layout with dummy videos: Home reel, Player, Archive, Contact | Click through on prod |
 | 3 | Supabase + admin login + video table; site reads from the database | Post a test entry in admin and see it as DRAFT on prod |
 | 4 | Bunny Stream upload in admin, plus HLS playback, posters and previews | Upload a real video |
@@ -225,12 +233,12 @@ admin.99entertainment.dk/
 
 ## 8. Needed from you
 
-1. **Where do the nameservers point?** Cloudflare, or your registrar (e.g. Simply, One.com, Punktum)? This decides between the Cloudflare plan and the GitHub Pages fallback.
+1. **Cloudflare:** the steps in §2. Tell me when the domain shows **Active**.
 2. **Admin emails** that may log in and push.
 3. **Videos to start with:** the files (or links), plus title, artist, category, year and credits.
 4. **Contact details:** email, socials, city.
 5. **Supabase:** reuse the 99MS project, or a new one?
-6. **Bunny Stream account** (I'll write the setup steps), or Cloudflare Stream if we go Cloudflare.
+6. **Bunny Stream account** (I'll write the setup steps). Cloudflare Stream is the alternative, now that we're on Cloudflare.
 
 ---
 

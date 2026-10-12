@@ -64,6 +64,37 @@ Everything runs from one repo (this one):
 - **Admin** always runs the newest code from `main`, because it's an internal tool. Only the public site goes through the prod → live review.
 - It's free and needs no build step: the same plain HTML/CSS/JS as the family. SSL for all subdomains is automatic.
 
+### Why Cloudflare over GitHub Pages (researched Oct 2026)
+
+| | GitHub Pages | Cloudflare Pages |
+|---|---|---|
+| Domains | 1 custom domain per repo | Up to 100 per project. A branch can get its own domain, e.g. `prod.` → `main` |
+| Server code (the push button) | None, static only | Pages Functions, 100k requests/day free |
+| Bandwidth | 100 GB/month soft limit | Static requests are free and unlimited |
+| Site size | 1 GB | 20,000 files, 25 MiB per file |
+| Builds | 10/hour soft limit | 500/month on the free plan |
+| Headers / redirects | Can't set them. Cache is fixed at `max-age=600` | `_headers` and `_redirects` files, e.g. `noindex` on prod and long caching |
+| Business use | Docs say it isn't for running an online business, e-commerce or SaaS | Allowed |
+| Catch | Nothing new to learn | The domain's nameservers must be on Cloudflare (needed for the root domain) |
+
+Notes:
+- Cloudflare now points *new full-stack* projects to **Workers** (with static assets) rather than Pages. Pages is not deprecated and is fully supported.
+- We use Pages because "domain per branch" (prod/live) is built in there. Moving a plain static site from Pages to Workers later is simple if it's ever needed.
+- The branch-domain trick only works with a proxied Cloudflare DNS record. With external DNS, `prod.` silently shows the live branch. That's another reason the nameservers must be on Cloudflare.
+
+### Moving the other 99 sites (optional, later)
+
+Same benefits, but no urgency: none of them is near a GitHub limit.
+
+- **Order:** 99ENT first (new, nothing to break). Then 99RIM, which gains the most: `99rim-prod` collapses into a `main` branch. Then 99MGMT and 99MS.
+- **Per site (~30 min):**
+  1. Add the domain to Cloudflare and **check that every DNS record was copied, especially MX/email records**.
+  2. Switch the nameservers.
+  3. Connect the repo as a Pages project and add the domain.
+  4. Turn off GitHub Pages only after the new site works.
+- 99MGMT's cache-busting step (in its GitHub Action) becomes the Pages build command.
+- Supabase login redirects don't change, because the domains stay the same.
+
 ### Setup steps (you, once)
 
 1. **Cloudflare account** (free) → **Add a domain** → `99entertainment.dk` → Free plan.

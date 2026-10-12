@@ -2,18 +2,19 @@
 
 Website for 99ENT (99entertainment.dk), the video and music production arm of 99. See PLAN.md for the full plan.
 
-## Hosting rule (applies to all 99 sites)
+## Hosting rule (all 99 sites)
 
 - Choose **GitHub Pages first**. That's what 99MGMT, 99MS and 99RIM use.
-- Moving to **Cloudflare Pages** is always an option, but only when the user asks for it. Don't propose it as the default.
-- The comparison and migration steps are in PLAN.md §2.
+- Moving to **Cloudflare Pages** is always an option when the user asks for it.
+- **Exception: 99ENT (this repo) is on Cloudflare Pages.** The user chose this on purpose, for the three subdomains and the Push live button.
+- The comparison and migration notes are in PLAN.md §2.
 
-## Where changes go
+## Where changes go (this repo, Cloudflare Pages)
 
-- **Prod:** every change goes to prod first, on the `main` branch of `rodriguez594/99entertainment-prod`, served at https://prod.99entertainment.dk.
-- **Live:** this repo, served at https://99entertainment.dk. It's only updated by the **Push live** button on prod, which runs `sync-from-prod.yml`, or when the user says "deploy".
-- **Admin:** `rodriguez594/99entertainment-admin`, served at https://admin.99entertainment.dk.
-- Each repo keeps its own `CNAME` file. **Never copy `CNAME` between repos.**
+- `main` branch → https://prod.99entertainment.dk. Every change lands here first.
+- `live` branch → https://99entertainment.dk. It's only updated by the **Push live** button on prod (fast-forwards `live` to `main`), or when the user says "deploy".
+- `admin/` folder (Pages project `99ent-admin`, from `main`) → https://admin.99entertainment.dk.
+- Never commit straight to `live`.
 
 ## Look
 

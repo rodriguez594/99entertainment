@@ -47,24 +47,48 @@
 
 ---
 
-## 2. Hosting: Cloudflare Pages (decided)
+## 2. Hosting: GitHub Pages (family default)
 
-**Only 99entertainment.dk moves to Cloudflare.** 99MGMT, 99MS, 99RIM and 99WRLDWIDE stay on GitHub Pages, unchanged. Each domain has its own nameservers, so nothing about the other sites moves.
+**Rule for 99:** choose GitHub Pages first. Moving to Cloudflare Pages is always an option later; see the comparison below.
 
-Everything runs from one repo (this one):
+This copies the 99RIM setup (prod repo + live repo) and adds an admin repo:
 
-| Cloudflare Pages project | Git branch / folder | Domain |
+| Repo | Domain | Updates |
 |---|---|---|
-| `99ent` (production) | `live` branch | 99entertainment.dk (+ `www` redirect) |
-| `99ent` (branch alias) | `main` branch | prod.99entertainment.dk (everything lands here first) |
-| `99ent-admin` | `main` branch, `admin/` folder | admin.99entertainment.dk |
+| `rodriguez594/99entertainment-prod` | prod.99entertainment.dk | Every change lands here first |
+| `rodriguez594/99entertainment` (this repo) | 99entertainment.dk (+ `www`) | Only via **Push live** |
+| `rodriguez594/99entertainment-admin` | admin.99entertainment.dk | Every change (internal tool) |
 
-- **Push live** is a small Cloudflare Pages Function. It holds a GitHub token and fast-forwards `live` to `main`. Live is then *byte-for-byte* what you reviewed on prod.
-- **Undo** moves `live` back to the previous pushed commit.
-- **Admin** always runs the newest code from `main`, because it's an internal tool. Only the public site goes through the prod → live review.
-- It's free and needs no build step: the same plain HTML/CSS/JS as the family. SSL for all subdomains is automatic.
+- Each repo has its own `CNAME` file. **Never copy `CNAME` between repos.**
+- Prod shows the yellow PROD badge and `<meta name="robots" content="noindex">`, as on 99RIM.
 
-### Why Cloudflare over GitHub Pages (researched Oct 2026)
+### How Push live works
+
+1. The button on prod calls a **Supabase Edge Function** called `push-live`. Supabase already runs 99RIM's AI function. The function checks that the caller is an admin, publishes the *ready* videos, and logs the push.
+2. It then starts a GitHub Action in this repo (`sync-from-prod.yml`), passing prod's current commit.
+3. The Action:
+   - checks out `99entertainment-prod` at that commit,
+   - copies everything except `CNAME`, `.git` and `.github`,
+   - commits "Push live from prod <sha>",
+   - deploys to Pages.
+
+   This repo's Pages source is "GitHub Actions". Live is then exactly what was reviewed on prod, about 1–2 minutes after pressing the button.
+4. **Undo** runs the same Action with the previous push's commit.
+5. **Secrets:** a fine-grained GitHub token, allowed to run Actions on this repo only, is stored as a Supabase secret. All repos are public, so the Action needs no extra token to read prod.
+
+### DNS for 99entertainment.dk
+
+At the current DNS provider; nothing moves to Cloudflare:
+
+- `A` records for `99entertainment.dk` → 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153
+- `CNAME` records for `www`, `prod` and `admin` → `rodriguez594.github.io`
+
+Then in each repo, go to Settings → Pages:
+- **Source:** `main` / root for prod and admin, "GitHub Actions" for live.
+- Check the custom domain.
+- Tick "Enforce HTTPS" once the certificate is issued.
+
+### If we ever move: GitHub Pages vs Cloudflare Pages (researched Oct 2026)
 
 | | GitHub Pages | Cloudflare Pages |
 |---|---|---|
@@ -79,42 +103,8 @@ Everything runs from one repo (this one):
 
 Notes:
 - Cloudflare now points *new full-stack* projects to **Workers** (with static assets) rather than Pages. Pages is not deprecated and is fully supported.
-- We use Pages because "domain per branch" (prod/live) is built in there. Moving a plain static site from Pages to Workers later is simple if it's ever needed.
+- If we move, use Pages, because "domain per branch" (prod/live) is built in there. Moving a plain static site from Pages to Workers later is simple if it's ever needed.
 - The branch-domain trick only works with a proxied Cloudflare DNS record. With external DNS, `prod.` silently shows the live branch. That's another reason the nameservers must be on Cloudflare.
-
-### Moving the other 99 sites (optional, later)
-
-Same benefits, but no urgency: none of them is near a GitHub limit.
-
-- **Order:** 99ENT first (new, nothing to break). Then 99RIM, which gains the most: `99rim-prod` collapses into a `main` branch. Then 99MGMT and 99MS.
-- **Per site (~30 min):**
-  1. Add the domain to Cloudflare and **check that every DNS record was copied, especially MX/email records**.
-  2. Switch the nameservers.
-  3. Connect the repo as a Pages project and add the domain.
-  4. Turn off GitHub Pages only after the new site works.
-- 99MGMT's cache-busting step (in its GitHub Action) becomes the Pages build command.
-- Supabase login redirects don't change, because the domains stay the same.
-
-### Setup steps (you, once)
-
-1. **Cloudflare account** (free) → **Add a domain** → `99entertainment.dk` → Free plan.
-2. Cloudflare shows two nameservers (e.g. `xxx.ns.cloudflare.com`).
-   - If 99entertainment.dk already uses those, skip this step.
-   - Otherwise, set them at the registrar for the domain. For .dk domains that's often Punktum dk's self-service or your registrar's panel.
-   - Wait until Cloudflare says the domain is **Active**. That can take minutes or up to 24h.
-3. **Workers & Pages → Create → Pages → Connect to Git** → `rodriguez594/99entertainment`.
-   - Project name: `99ent`
-   - Production branch: `live`
-   - Build command: *(none)*
-   - Output directory: `/`
-4. In project `99ent` → **Custom domains**, add `99entertainment.dk` and `www.99entertainment.dk`.
-5. In **DNS**, add a `CNAME` record: `prod` → `main.99ent.pages.dev` (proxied).
-6. Create a second Pages project from the same repo:
-   - Name: `99ent-admin`
-   - Production branch: `main`
-   - Root directory: `admin`
-   - Custom domain: `admin.99entertainment.dk`
-7. I'll create the `live` branch and the Push live function. The function's secrets (GitHub token, Supabase keys) go in **Settings → Variables and Secrets**; I'll list exactly which.
 
 ## 3. Backend: Supabase + video hosting
 
@@ -126,7 +116,7 @@ Same benefits, but no urgency: none of them is near a GitHub limit.
   - Upload straight from the admin page with resumable uploads, so big files survive a bad connection.
   - It automatically creates adaptive streaming (HLS), a poster frame, and an animated preview for hover thumbnails.
   - Drafts use token-signed URLs.
-  - **Alternative:** Cloudflare Stream (pairs nicely with Cloudflare Pages). We don't use YouTube/Vimeo embeds, because their players and branding break the custom player design.
+  - **Alternative:** Cloudflare Stream (also fine). We don't use YouTube/Vimeo embeds, because their players and branding break the custom player design.
 
 **Video record.** Each video stores:
 
@@ -238,10 +228,12 @@ admin.99entertainment.dk/
 - **Repo layout:**
 
   ```
-  index.html  work.html  archive.html  contact.html
-  styles.css  js/  assets/
-  admin/      (index.html, admin.css, admin.js)
-  functions/  (push-live, sign-upload — server side)
+  99entertainment-prod / 99entertainment:
+    index.html  work.html  archive.html  contact.html
+    styles.css  js/  assets/
+    supabase/functions/  (push-live, sign-upload: server side, like 99RIM's rim-ai)
+  99entertainment-admin:
+    index.html  admin.css  admin.js
   ```
 
 - **Cache-busting:** `?v=<commit>` on deploy, like 99MGMT.
@@ -252,7 +244,7 @@ admin.99entertainment.dk/
 
 | # | Step | You can see |
 |---|---|---|
-| 1 | Cloudflare setup (§2) + `live` branch: the three subdomains serving a placeholder, the PROD badge, `noindex` on prod | All three URLs work |
+| 1 | Create the prod and admin repos + DNS + Pages (§2): the three subdomains serving a placeholder, the PROD badge, `noindex` on prod | All three URLs work |
 | 2 | Public site layout with dummy videos: Home reel, Player, Archive, Contact | Click through on prod |
 | 3 | Supabase + admin login + video table; site reads from the database | Post a test entry in admin and see it as DRAFT on prod |
 | 4 | Bunny Stream upload in admin, plus HLS playback, posters and previews | Upload a real video |
@@ -264,12 +256,12 @@ admin.99entertainment.dk/
 
 ## 8. Needed from you
 
-1. **Cloudflare:** the steps in §2. Tell me when the domain shows **Active**.
+1. **DNS:** the records in §2. Also create the empty repos `99entertainment-prod` and `99entertainment-admin`, or let me know if I should.
 2. **Admin emails** that may log in and push.
 3. **Videos to start with:** the files (or links), plus title, artist, category, year and credits.
 4. **Contact details:** email, socials, city.
 5. **Supabase:** reuse the 99MS project, or a new one?
-6. **Bunny Stream account** (I'll write the setup steps). Cloudflare Stream is the alternative, now that we're on Cloudflare.
+6. **Bunny Stream account** (I'll write the setup steps). Cloudflare Stream is the alternative.
 
 ---
 

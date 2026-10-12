@@ -78,9 +78,14 @@ This copies the 99RIM setup (prod repo + live repo) and adds an admin repo:
 
 ### DNS for 99entertainment.dk
 
-At the current DNS provider; nothing moves to Cloudflare:
+DNS is on Cloudflare (nameservers already set), and **hosting stays on GitHub Pages**. Cloudflare is used as the DNS provider only.
+
+1. **Verify the domain on GitHub first.** Go to github.com → your Settings → Pages → Verified domains → Add `99entertainment.dk`. Add the `TXT` record it shows (`_github-pages-challenge-rodriguez594`) in Cloudflare DNS. This stops anyone else from claiming the subdomains.
+2. In Cloudflare DNS, delete any placeholder `A`, `AAAA` or `CNAME` records on `@`, `www`, `prod` or `admin`. Don't touch `MX`/`TXT` email records.
+3. Add the records below with **Proxy status: DNS only (grey cloud)**. GitHub must see its own IPs to issue the HTTPS certificate.
 
 - `A` records for `99entertainment.dk` → 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153
+- Optional IPv6: `AAAA` records for `99entertainment.dk` → 2606:50c0:8000::153, 2606:50c0:8001::153, 2606:50c0:8002::153, 2606:50c0:8003::153
 - `CNAME` records for `www`, `prod` and `admin` → `rodriguez594.github.io`
 
 Then in each repo, go to Settings → Pages:
